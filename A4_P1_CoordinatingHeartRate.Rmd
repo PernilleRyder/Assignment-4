@@ -184,6 +184,8 @@ image(RP, xlab = "", ylab = "", col = cols)
 #Error ok; code is working
 #Optimal Radius Not found: try again choosing a wider radius span and larger sample sizeFejl i if (length(ts1) < embed * delay) { : argument har længden nul
 
+#To check if the code works, insert values in delay, embed and radius
+
 ```
 ### Systematically pre-process the data
 - Loop through all the files (either with a loop or with a function), check which files should be excluded, if any, and save the pre-processed time-series. Tip: plot and visually inspect the data to figure out which should be excluded.
@@ -269,6 +271,8 @@ fitCrqa <- function(ts1,ts2){
 
 }
 
+library(stringr)
+
 # KØR DET HELE SAMMEN 
 setwd("~/Desktop/Experimental methods 3/Assignment 4/pp")
 
@@ -276,20 +280,21 @@ files = list.files(pattern = "pp_")
 
 for (i in files){
   print(i)
-  resp_df = fitCrqa(Resp1S,Resp2S)
-  heart_df = fitCrqa(HR1S,HR2S)
+  d = read.csv(i)
+  resp_df = fitCrqa(d$Resp1S,d$Resp2S)
+  heart_df = fitCrqa(d$HR1S,d$HR2S)
   
-  study = substr(i, start = 4, stop = 6)
-  group = substr(i, start = 11, stop = 12)
-  trial = substr(i, start = 14, stop = 15)
-  condition = substr(i, start = 17, stop = 20)
+  Study = str_extract(i,"Study+\\d+")
+  Group = str_extract(i,"G+\\d+")
+  Trial = str_extract(i,"T+\\d+")
+  Condition = substr(i, start = 17, stop = 20)
   
-  df = data.frame(study, group, trial, condition,
-                  RespDelay=resp_df$delay, RespEmbed = resp_df$emddim, RespRadius = resp_df$radius, 
-                  RespRR=resp_df$RR, RespDET = resp_df$DET, RespML = resp_df$maxL,RespL=resp_df$L, 
+  df = data.frame(Study, Group, Trial, Condition,
+                  RespDelay=resp_df$Delay, RespEmbed = resp_df$Embed, RespRadius = resp_df$Radius, 
+                  RespRR=resp_df$RR, RespDET = resp_df$DET, RespMaxL = resp_df$LMAX,RespL=resp_df$L, 
                   RespEntr = resp_df$ENTR, RespLAM = resp_df$LAM, RespTT=resp_df$TT, 
-                  HeartDelay = heart_df$delay, HeartEmbed = heart_df$emddim, HeartRadius = heart_df$radius,
-                  HeartRR = heart_df$RR, HeartDET = heart_df$DET, HeartML = heart_df$maxL, 
+                  HeartDelay = heart_df$Delay, HeartEmbed = heart_df$Embed, HeartRadius = heart_df$Radius,
+                  HeartRR = heart_df$RR, HeartDET = heart_df$DET, HeartMaxL = heart_df$LMAX, 
                   HeartL = heart_df$L, HeartEntr = heart_df$ENTR, HeartLAM = heart_df$LAM, 
                   HeartTT = heart_df$TT)
                   
@@ -297,12 +302,36 @@ for (i in files){
   
 }
 
+
 #loop crqa using median(hr_embed, hr_delay, hr_radius) and on resp
 #output: pair, condition, trial, hr_rr, hr_det, hr_l, resp_rr, resp_det, resp_l
 
+#Removing rows in dataframe
+dataframe = dataframe[-r(2,7,11,12,14,17,24,25,30), ] # doesn't work
 
+#median of optimized parameters
+hr_embed = median(dataframe$HeartEmbed)
+hr_delay = median(dataframe$HeartDelay)
+hr_radius = median(dataframe$HeartRadius)
 
+resp_embed = median(dataframe$RespEmbed)
+resp_delay = median(dataframe$RespDelay)
+resp_radius = median(dataframe$RespRadius)
 
+#loop crqa
+
+#crqa heart rate
+par = list(lgM =  50, steps = seq(1, 6, 1),  radiusspan = 100,  radiussample = 40, normalize = 0,  rescale = 0,  mindiagline = 2,  minvertline = 2,  tw = 0,  whiteline = FALSE,  recpt = FALSE,  fnnpercent = 10,  typeami = "mindip") 
+
+ans_hr2 = optimizeParam(x, x, par, min.rec= 3.5, max.rec= 4.5)
+
+Results=crqa (x, x, delay=hr_delay, embed=hr_embed, radius=hr_radius,normalize=0,rescale=0,mindiagline = 2,minvertline = 2) 
+
+#crqa respiration
+
+ans_resp2 = optimizeParam(x, x, par, min.rec= 3.5, max.rec= 4.5)
+
+Results=crqa (x, x, delay=resp_delay, embed=resp_embed, radius=resp_radius,normalize=0,rescale=0,mindiagline = 2,minvertline = 2) 
 ```
 
 ### Creating controls: shuffled controls
