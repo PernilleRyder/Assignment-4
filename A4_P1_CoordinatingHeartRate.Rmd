@@ -302,38 +302,124 @@ for (i in files){
   
 }
 
+```
 
-#loop crqa using median(hr_embed, hr_delay, hr_radius) and on resp
-#output: pair, condition, trial, hr_rr, hr_det, hr_l, resp_rr, resp_det, resp_l
+Loop crqa using median(hr_embed, hr_delay, hr_radius) and on resp
+Output: group, condition, trial, hr_rr, hr_det, hr_l, resp_rr, resp_det, resp_l
 
-#Removing rows in dataframe
-dataframe = dataframe[-r(2,7,11,12,14,17,24,25,30), ] # doesn't work
+
+```{r}
+
 
 #median of optimized parameters
-hr_embed = median(dataframe$HeartEmbed)
-hr_delay = median(dataframe$HeartDelay)
-hr_radius = median(dataframe$HeartRadius)
+hr_delay= round(median(dataframe$HeartDelay, na.rm=T),2) 
+hr_embed= round(median(dataframe$HeartEmbed, na.rm=T),2)
+hr_radius=round(median(dataframe$HeartRadius, na.rm=T),2)
 
-resp_embed = median(dataframe$RespEmbed)
-resp_delay = median(dataframe$RespDelay)
-resp_radius = median(dataframe$RespRadius)
+resp_delay= round(median(dataframe$RespDelay, na.rm=T),2)
+resp_embed= round(median(dataframe$RespEmbed, na.rm=T),2)
+resp_radius=round(median(dataframe$RespRadius, na.rm=T),2)
+
 
 #loop crqa
 
-#crqa heart rate
-par = list(lgM =  50, steps = seq(1, 6, 1),  radiusspan = 100,  radiussample = 40, normalize = 0,  rescale = 0,  mindiagline = 2,  minvertline = 2,  tw = 0,  whiteline = FALSE,  recpt = FALSE,  fnnpercent = 10,  typeami = "mindip") 
+#function for heart rate
+fitCrqa1 <- function(ts1,ts2){
 
-ans_hr2 = optimizeParam(x, x, par, min.rec= 3.5, max.rec= 4.5)
+  par = list(lgM =  30, steps = seq(1, 6, 1),  radiusspan = 100,  radiussample = 100, normalize = 0,  rescale = 0,  mindiagline = 2,  minvertline = 2,  tw = 0,  whiteline = FALSE,  recpt = FALSE,  fnnpercent = 10,  typeami = "mindip")
 
-Results=crqa (x, x, delay=hr_delay, embed=hr_embed, radius=hr_radius,normalize=0,rescale=0,mindiagline = 2,minvertline = 2) 
+  Pars = try(optimizeParam(ts1, ts2, par, min.rec = 2, max.rec = 8))
 
-#crqa respiration
+  if (length(Pars)>1){
+    Results=crqa(ts1, ts2, delay=0, embed=16.5, radius=0.38, normalize=0, rescale=0, mindiagline = 2, minvertline = 2)
+  } 
+  # else {
+  #   Results=NULL
+  #   Pars=NULL
+  #   Pars$delay=NA
+  #   Pars$emddim=NA
+  #   Pars$radius=NA
+  #   Results$RR=NA
+  #   Results$DET=NA
+  #   Results$maxL=NA
+  #   Results$L=NA
+  #   Results$ENTR=NA
+  #   Results$LAM=NA
+  #   Results$TT=NA
+  # }
 
-ans_resp2 = optimizeParam(x, x, par, min.rec= 3.5, max.rec= 4.5)
+  df=data.frame(RR=Results$RR,DET=Results$DET,LMAX=Results$maxL,L=Results$L,ENTR=Results$ENTR,LAM=Results$LAM,TT=Results$TT)
 
-Results=crqa (x, x, delay=resp_delay, embed=resp_embed, radius=resp_radius,normalize=0,rescale=0,mindiagline = 2,minvertline = 2) 
+  return(df)
+
+}
+
+#function for respiration
+fitCrqa2 <- function(ts1,ts2){
+
+  par = list(lgM =  30, steps = seq(1, 6, 1),  radiusspan = 100,  radiussample = 100, normalize = 0,  rescale = 0,  mindiagline = 2,  minvertline = 2,  tw = 0,  whiteline = FALSE,  recpt = FALSE,  fnnpercent = 10,  typeami = "mindip")
+
+  Pars = try(optimizeParam(ts1, ts2, par, min.rec = 2, max.rec = 8))
+  
+  
+  if (length(Pars)>1){
+    Results=crqa(ts1, ts2, delay=18, embed=2, radius=0.38, normalize=0, rescale=0, mindiagline = 2, minvertline = 2)
+   } 
+    # else {
+  #   Results=NULL
+  #   Pars=NULL
+  #   Pars$delay=NA
+  #   Pars$emddim=NA
+  #   Pars$radius=NA
+  #   Results$RR=NA
+  #   Results$DET=NA
+  #   Results$maxL=NA
+  #   Results$L=NA
+  #   Results$ENTR=NA
+  #   Results$LAM=NA
+  #   Results$TT=NA
+  # }
+
+  df=data.frame(RR=Results$RR,DET=Results$DET,LMAX=Results$maxL,L=Results$L,ENTR=Results$ENTR,LAM=Results$LAM,TT=Results$TT)
+
+  return(df)
+
+}
+
+# KØR DET HELE SAMMEN 
+setwd("~/Desktop/Experimental methods 3/Assignment 4/pp")
+
+files = list.files(pattern = "pp_")
+
+for (i in files){
+  print(i)
+  d2 = read.csv(i)
+  resp_df2 = fitCrqa2(d2$Resp1S,d2$Resp2S)
+  heart_df2 = fitCrqa1(d2$HR1S,d2$HR2S)
+  
+  Study = str_extract(i,"Study+\\d+")
+  Group = str_extract(i,"G+\\d+")
+  Trial = str_extract(i,"T+\\d+")
+  Condition = substr(i, start = 17, stop = 20)
+  
+  df2 = data.frame(Study, Group, Trial, Condition,
+                  RespRR=resp_df$RR, RespDET = resp_df$DET, RespMaxL = resp_df$LMAX,RespL=resp_df$L, 
+                  RespEntr = resp_df$ENTR, RespLAM = resp_df$LAM, RespTT=resp_df$TT, 
+                  HeartRR = heart_df$RR, HeartDET = heart_df$DET, HeartMaxL = heart_df$LMAX, 
+                  HeartL = heart_df$L, HeartEntr = heart_df$ENTR, HeartLAM = heart_df$LAM, 
+                  HeartTT = heart_df$TT)
+                  
+  if(exists("dataframe2")){dataframe2 = rbind(dataframe2, df2)} else {dataframe2 = df2}
+  
+}
+
 ```
 
+
+
+```{r}
+
+```
 ### Creating controls: shuffled controls
  - loop through all pairs and conditions
  - shuffle the timeseries (take a timeseries and rearrange its values in a random order). Tip check the sample() function
